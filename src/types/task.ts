@@ -34,5 +34,8 @@ export type BotTaskAction<Config = any> = {
   // Interval at which this function is called.
   interval: number
   // Whether to wait one interval upon starting the bot, or run immediately.
-  deferred: boolean
+  deferred?: boolean
+  // Limits the number of payloads generated per run to this number.
+  // Used for tasks that have an expensive payload generator, such as tasks that scrape a website.
+  batchLimit?: number
 }

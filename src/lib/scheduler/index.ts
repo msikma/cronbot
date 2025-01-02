@@ -123,7 +123,7 @@ export class BotTaskScheduler {
         const instance = instances.get(guildId)!
         if (instance instanceof FeedTask) {
           const subtask = action.action.name
-          await runFeedTask(instance, task, subtask, guildId, this.bot)
+          await runFeedTask(instance, task, subtask, action, guildId, this.bot)
         }
         else {
           throw new Error('Invalid task type: must subclass FeedTask')

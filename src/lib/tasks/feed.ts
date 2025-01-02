@@ -4,7 +4,7 @@
 import {Client} from 'discord.js'
 import CronBot from '../../cronbot.ts'
 import {logFeedItemUpdates, sleep} from '../util/index.ts'
-import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, TaskActionContext} from '../../types.ts'
+import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
 
 /**
  * FeedTask type task that posts entries to Discord periodically.
@@ -44,15 +44,32 @@ export class FeedTask<Config = any> {
 }
 
 /**
+ * Limits the number of feed update items to a given number.
+ * 
+ * This is used for tasks that don't want to post too many items at once.
+ * For example, if a task's getFeedItems() returns 50 items, and its limit is set to 5,
+ * it will only post 5 items for now and get to the remaining 45 in subsequent calls.
+ * 
+ * This is useful for tasks that have a very expensive payload function, or tasks
+ * that need to be wary of rate limits.
+ */
+function limitPostableItems(feedItemUpdates: FeedItemUpdate[], taskUpdateLimit: number | null): FeedItemUpdate[] {
+  if (taskUpdateLimit === null) {
+    return feedItemUpdates
+  }
+  return feedItemUpdates.slice(0, taskUpdateLimit)
+}
+
+/**
  * Runs a FeedTask type task.
  * 
  * This function is called from the scheduler. It implements the flow described above.
  */
-export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask: string, guildId: string, bot: CronBot): Promise<void> {
+export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask: string, action: BotTaskAction, guildId: string, bot: CronBot): Promise<void> {
   const {orm} = taskInstance.context
   try {
     const feedItems = await taskInstance.getFeedItems()
-    const postableItems = await orm.filterFeedItems(feedItems)
+    const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems), action.batchLimit || null)
     await taskInstance.reportFeedItems(postableItems)
     for (const postableItem of postableItems) {
       const guid = postableItem.data.guid
