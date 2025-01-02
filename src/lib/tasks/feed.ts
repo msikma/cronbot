@@ -1,7 +1,7 @@
 // @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
-import {Client} from 'discord.js'
+import {Client, type BaseMessageOptions, type Message} from 'discord.js'
 import CronBot from '../../cronbot.ts'
 import {logFeedItemUpdates, sleep} from '../util/index.ts'
 import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
@@ -34,14 +34,14 @@ export class FeedTask<Config = any> {
     this.task = context.task
     this.taskConfig = context.config
   }
+  async reportFeedItems(feedItemUpdates: FeedItemUpdate[]): Promise<void> {
+    // If there are items to post, we'll post "posting x new items" to the log.
+    await this.context.log.info(logFeedItemUpdates(feedItemUpdates))
+  }
   async getFeedItems(): Promise<FeedItem[]> {
     throw new Error('Unimplemented')
   }
-  async reportFeedItems(itemUpdates: FeedItemUpdate[]): Promise<void> {
-    // If there are items to post, we'll post "posting x new items" to the log.
-    await this.context.log.info(logFeedItemUpdates(itemUpdates))
-  }
-  async postFeedItem(itemUpdate: FeedItemUpdate): Promise<FeedItemUpdateResult> {
+  async getFeedItemPayload(feedItem: FeedItem): Promise<BaseMessageOptions> {
     throw new Error('Unimplemented')
   }
 }
@@ -64,6 +64,54 @@ function limitPostableItems(feedItemUpdates: FeedItemUpdate[], taskUpdateLimit: 
 }
 
 /**
+ * Posts feed item payloads to Discord and returns the message/channel/guild ids.
+ * 
+ * Either posts a new message, or edits an existing message if the itemUpdate is an update type.
+ * 
+ * This only succeeds if we have a given channel in the config that is open to receive messages.
+ * A number of things can go wrong, in which case this function will throw.
+ */
+async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageOptions, itemUpdate: FeedItemUpdate, task: BotTask, subtask: string) {
+  const {client} = taskInstance
+  const {guid, taskConfig} = itemUpdate.data
+  const taskName = `**${task.id}.${subtask}**`
+  if (taskConfig.channel == null) {
+    throw new Error(`Task ${taskName} has no channel configured in the task config`)
+  }
+  const channel = await client.channels.fetch(taskConfig.channel)
+  if (channel == null) {
+    throw new Error(`Task ${taskName} channel could not be found: ${taskConfig.channel}`)
+  }
+  if (!channel.isSendable()) {
+    throw new Error(`Task ${taskName} channel is not sendable: ${taskConfig.channel}`)
+  }
+
+  // Depending on what type of update we are doing, either post a new message or edit an existing one.
+  let msg: Message
+  if (itemUpdate.action === 'insert') {
+    msg = await channel.send(payload)
+  }
+  else if (itemUpdate.action === 'update') {
+    msg = await channel.messages.fetch(itemUpdate.messageId)
+    await msg.edit(payload)
+  }
+  else {
+    throw new Error(`Item update has an invalid action type: ${(itemUpdate as FeedItemUpdate).action as string}`)
+  }
+  if (msg == null) {
+    throw new Error(`Could not ${itemUpdate.action} message: guid=${guid}`)
+  }
+  if (!msg.id) {
+    throw new Error(`Task ${taskName} item post did not get a messageId: guid=${guid}`)
+  }
+  return {
+    messageId: msg.id,
+    channelId: msg.channelId,
+    guildId: msg.guildId || ''
+  }
+}
+
+/**
  * Runs a FeedTask type task.
  * 
  * This function is called from the scheduler. It implements the flow described above.
@@ -71,16 +119,19 @@ function limitPostableItems(feedItemUpdates: FeedItemUpdate[], taskUpdateLimit: 
 export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask: string, action: BotTaskAction, guildId: string, bot: CronBot): Promise<void> {
   const {orm} = taskInstance.context
   try {
+    // Request the full list of feed items from the task.
     const feedItems = await taskInstance.getFeedItems()
+    // Remove all items that we don't need to post, and limit it to the task's batch limit.
     const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems), action.batchLimit || null)
+    // Ask the task to report on the number of items we're about to post.
     await taskInstance.reportFeedItems(postableItems)
+
+    // We've now got a number of postable items, which we will be posting one by one.
+    // Before posting, we'll request the task to produce the payload for this post.
     for (const postableItem of postableItems) {
       const guid = postableItem.data.guid
-      const msg = await taskInstance.postFeedItem(postableItem)
-      if (!msg.messageId) {
-        bot.logError(guildId, `Task **${task.id}.${subtask}** did not return messageId`, {guid})
-        continue
-      }
+      const payload = await taskInstance.getFeedItemPayload(postableItem.data)
+      const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
       await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
       await sleep(FEED_ITEM_INTERVAL)
     }
