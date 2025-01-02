@@ -4,7 +4,7 @@
 import {sleep, createTaskEmbed} from '../util/index.ts'
 import CronBot from '../../cronbot.ts'
 import {runFeedTask, FeedTask} from '../../index.ts'
-import type {BotTask, BotTaskActionConfig, TaskActionContext, ScheduledTaskData} from '../../types.ts'
+import type {BotTask, BotTaskAction, BotTaskActionConfig, TaskActionContext, ScheduledTaskData} from '../../types.ts'
 
 const PAUSE_WAIT = 500
 const GUILD_WAIT = 500
@@ -112,7 +112,7 @@ export class BotTaskScheduler {
     const instances: Map<string, InstanceType<typeof instanceClass>> = new Map()
     for (const [guildId, taskConfig] of config.guilds.entries()) {
       const subtask = action.action.name
-      const context = await this.getTaskActionContext(task, subtask, taskConfig, guildId, this.bot)
+      const context = await this.getTaskActionContext(task, subtask, action, taskConfig, guildId, this.bot)
       const instance = new action.action(context)
       instances.set(guildId, instance)
     }
@@ -163,13 +163,21 @@ export class BotTaskScheduler {
   /**
    * Creates the context object for a single task iteration.
    */
-  private async getTaskActionContext(task: BotTask, subtask: string, taskConfig: BotTaskActionConfig, guildId: string, bot: CronBot): Promise<TaskActionContext> {
+  private async getTaskActionContext(
+    task: BotTask,
+    subtask: string,
+    action: BotTaskAction,
+    actionConfig: BotTaskActionConfig,
+    guildId: string,
+    bot: CronBot
+  ): Promise<TaskActionContext> {
     const loggers = this.bot.logger.createTaskLoggers(task, guildId)
     const orm = this.bot.db.getTaskActionDatabaseOrm(task, subtask)
     return {
       task,
       subtask,
-      config: taskConfig,
+      action,
+      config: actionConfig,
       guildId,
       client: bot.getClient(),
       db: this.bot.db,

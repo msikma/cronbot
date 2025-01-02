@@ -3,7 +3,7 @@
 
 import {Client} from 'discord.js'
 import CronBot from '../../cronbot.ts'
-import {logFeedItemUpdates} from '../util/index.ts'
+import {logFeedItemUpdates, sleep} from '../util/index.ts'
 import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, TaskActionContext} from '../../types.ts'
 
 /**
@@ -36,7 +36,7 @@ export class FeedTask<Config = any> {
   }
   async reportFeedItems(itemUpdates: FeedItemUpdate[]): Promise<void> {
     // If there are items to post, we'll post "posting x new items" to the log.
-    //await this.context.log.info(logFeedItemUpdates(itemUpdates))
+    await this.context.log.info(logFeedItemUpdates(itemUpdates))
   }
   async postFeedItem(itemUpdate: FeedItemUpdate): Promise<FeedItemUpdateResult> {
     throw new Error('Unimplemented')

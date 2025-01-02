@@ -4,7 +4,7 @@
 import {Client} from 'discord.js'
 import {EmbedBuilder} from 'discord.js'
 import {BotDatabase} from '../lib/db/index.ts'
-import type {BotTask} from './task.ts'
+import type {BotTask, BotTaskAction} from './task.ts'
 import type {BotTaskActionConfig} from './config.ts'
 import type {LogFunction} from './logger.ts'
 import type {FeedItem, FeedItemUpdate} from './task-type.ts'
@@ -33,6 +33,8 @@ export interface TaskActionContext {
   task: BotTask
   // The subtask is the currently running function name.
   subtask: string
+  // The given action that's being executed.
+  action: BotTaskAction
   // Config for a specific guild for this task from the config.js file.
   config: BotTaskActionConfig
   // Guild id that's relevant to this task iteration.
