@@ -6,6 +6,9 @@ import CronBot from '../../cronbot.ts'
 import {logFeedItemUpdates, sleep} from '../util/index.ts'
 import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
 
+// Amount of time we sleep while posting multiple feed items.
+const FEED_ITEM_INTERVAL = 5000
+
 /**
  * FeedTask type task that posts entries to Discord periodically.
  * 
@@ -79,6 +82,7 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
         continue
       }
       await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
+      await sleep(FEED_ITEM_INTERVAL)
     }
   }
   catch (err) {
