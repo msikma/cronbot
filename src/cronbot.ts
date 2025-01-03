@@ -55,7 +55,7 @@ class CronBot {
     // Store the library consumer's path (appPath) and the library's path (libPath).
     // This is used to highlight stack traces so it's easy to see where an error originated.
     this.appPath = options.path || null
-    this.libPath = path.join(import.meta.dirname, '..')
+    this.libPath = path.join(import.meta.dirname ?? '', '..')
 
     // Initialize the main bot services.
     this.scheduler = new BotTaskScheduler(this)
@@ -204,15 +204,28 @@ class CronBot {
   }
 
   /**
+   * Loads the config.
+   */
+  private async loadConfig() {
+    this.config = await getBotConfig(this.envPaths)
+  }
+
+  /**
+   * Returns the database config for use in external programs.
+   */
+  public getDatabaseConfig() {
+    return this.db.getDatabaseConfig(this.envPaths)
+  }
+
+  /**
    * Initializes the bot and starts performing tasks.
    */
   async init() {
     // Run scripts if requested via command line.
     await this.runScripts()
 
-    // Load the config data first.
-    const botConfig = await getBotConfig(this.envPaths)
-    this.config = botConfig
+    // From here on the config is needed for everything else.
+    await this.loadConfig()
 
     // Connect to the server. Once connected, start all the bot services.
     await this.connect()

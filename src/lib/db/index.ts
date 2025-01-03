@@ -3,6 +3,7 @@
 
 import * as path from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
+import type {EnvPaths} from '@dada78641/env-paths'
 import {migrate} from 'drizzle-orm/better-sqlite3/migrator'
 import {drizzle, type BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
 import CronBot from '../../cronbot.ts'
@@ -59,6 +60,20 @@ export class BotDatabase {
    */
   public getDatabasePath(cachePath: string) {
     return path.join(cachePath, 'db.sqlite3')
+  }
+
+  /**
+   * Returns configuration for the database for external programs to connect.
+   */
+  public getDatabaseConfig(envPaths: EnvPaths) {
+    return {
+      // Note: we must use __dirname here to accomodate Drizzle Studio's runtime.
+      schema: `${path.join(__dirname, '..', 'dist', 'index.js')}`,
+      dialect: 'sqlite',
+      dbCredentials: {
+        url: `${path.join(envPaths.cache, 'db.sqlite3')}`
+      }
+    }
   }
 
   /**
