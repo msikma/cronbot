@@ -1,10 +1,11 @@
 // @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
-import {omit, keyBy, isEqual} from 'lodash-es'
-import {eq, and, inArray} from 'drizzle-orm'
+import {omit, keyBy} from 'lodash-es'
+import {eq, ne, and, inArray} from 'drizzle-orm'
 import {cache, message, cacheToMessage} from './schema.ts'
 import type {DrizzleClient} from './index.ts'
+import {isSerializedEqual} from '../util/index.ts'
 import type {FeedItem, FeedItemUpdate} from '../../types.ts'
 
 /**
@@ -48,14 +49,14 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
   
   for (const item of itemsMap.values()) {
     const existingItem = existingItemsMap.get(item.guid)
-    const existingMessageId = existingItem?.message[0].id || null
+    const existingMessageId = existingItem?.message[0]?.id || null
     
     if (existingItem === undefined || (existingItem && existingMessageId === null)) {
       // If we have no existing item yet, we can send a new post to Discord.
       // In the rare case that we have an item, but we haven't posted it yet, treat it as a new post.
       postableItems.push({data: item, action: 'insert', messageId: null})
     }
-    else if (existingItem && !isEqual(item.data, existingItem.data) && existingMessageId !== null) {
+    else if (existingItem && !isSerializedEqual(item.data, existingItem.data) && existingMessageId !== null) {
       // If the existing item exists, but the data is different, we can update an existing Discord post.
       postableItems.push({data: item, action: 'update', messageId: existingMessageId})
     }

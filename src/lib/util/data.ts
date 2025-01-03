@@ -25,3 +25,12 @@ export function promiseSequential<T>(promises: Promise<T>[]): Promise<T[]> {
     Promise.resolve([] as T[])
   )
 }
+
+/**
+ * Returns whether two objects serialize to the same JSON data.
+ */
+export function isSerializedEqual(objA: any, objB: any): boolean {
+  const serializedObjA = JSON.stringify(objA)
+  const serializedObjB = JSON.stringify(objB)
+  return serializedObjA === serializedObjB
+}
