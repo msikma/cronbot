@@ -3,8 +3,8 @@
 
 import {Client, DiscordAPIError, type BaseMessageOptions, type Message} from 'discord.js'
 import CronBot from '../../cronbot.ts'
-import {logFeedItemUpdates, sleep} from '../util/index.ts'
-import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
+import {logFeedItemUpdates, getDiscordMessageLink, sleep} from '../util/index.ts'
+import type {FeedItem, FeedItemUpdate, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
 
 // Amount of time we sleep while posting multiple feed items.
 const FEED_ITEM_INTERVAL = 5000
@@ -75,6 +75,7 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
   const {client} = taskInstance
   const {guid, taskConfig} = itemUpdate.data
   const taskName = `**${task.id}.${subtask}**`
+  let isRepost = false
   if (taskConfig.channel == null) {
     throw new Error(`Task ${taskName} has no channel configured in the task config`)
   }
@@ -102,6 +103,7 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
         // If it's any other error, we'll rethrow the error so it gets logged.
         if (err.code === 10008) {
           msg = await channel.send(payload)
+          isRepost = true
         }
         else {
           throw err
@@ -124,7 +126,8 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
   return {
     messageId: msg.id,
     channelId: msg.channelId,
-    guildId: msg.guildId || ''
+    guildId: msg.guildId || '',
+    isRepost,
   }
 }
 
@@ -154,6 +157,10 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
       const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
       // Insert the message id and other metadata into the database.
       await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
+
+      if (msg.isRepost) {
+        bot.logInfo(guildId, `Task **${task.id}.${subtask}** reposted a message that appeared to have been deleted: ${getDiscordMessageLink(msg.messageId, msg.channelId, msg.guildId)}`)
+      }
 
       await sleep(FEED_ITEM_INTERVAL)
     }

@@ -4,9 +4,6 @@
 // Time units accepted by scheduleEvery().
 export type TimeUnit = 'second' | 'seconds' | 'minute' | 'minutes' | 'hour' | 'hours'
 
-// Types of timestamps Discord can display.
-export type TimestampType = 'd' | 'D' | 't' | 'T' | 'f' | 'F' | 'R'
-
 // Millisecond durations of each unit.
 const unitMilliseconds = new Map([
   ['second', 1000],
@@ -16,13 +13,6 @@ const unitMilliseconds = new Map([
 
 /** Sleeps for a given number of ms and then resolves. */
 export const sleep: (ms: number) => Promise<void> = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-/**
- * Returns a Discord timestamp or "hammertime".
- */
-export function getDiscordTimestamp(unixTime: number, mode: TimestampType) {
-  return `<t:${unixTime}:${mode}>`
-}
 
 /**
  * Returns a milliseconds value for a given number and time unit.
