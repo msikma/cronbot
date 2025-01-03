@@ -9,11 +9,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./util": {
       "types": "./dist/util.d.ts",
-      "import": "./dist/util.js"
+      "import": "./dist/util.js",
+      "require": "./dist/util.js"
     }
   },
   "publishConfig": {
