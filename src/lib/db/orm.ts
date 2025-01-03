@@ -126,6 +126,12 @@ export async function upsertMessage(db: DrizzleClient, messageId: string, guildI
  */
 export async function connectCacheAndMessage(db: DrizzleClient, guid: string, taskId: string, messageId: string): Promise<void> {
   await db
+    .delete(cacheToMessage)
+    .where(and(
+      eq(cacheToMessage.guid, guid),
+      ne(cacheToMessage.id, messageId)
+    ))
+  await db
     .insert(cacheToMessage)
     .values({
       guid: guid,
