@@ -107,7 +107,9 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
           throw err
         }
       }
-      throw err
+      else {
+        throw err
+      }
     }
   }
   else {
