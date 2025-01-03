@@ -99,8 +99,8 @@ export class BotTaskScheduler {
     const interval = Math.max(action.interval, 100)
 
     // If the task is deferred, it means we're sleeping once before calling it for the first time.
-    // Non-deferred tasks are called immediately. We only don't defer if it's explicitly false.
-    if (action.deferred === false) {
+    // Non-deferred tasks are called immediately. If deferred is not set, we assume it's true.
+    if (action.deferred !== false) {
       yield await sleep(interval)
     }
 
