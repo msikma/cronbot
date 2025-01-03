@@ -1,7 +1,7 @@
 // @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
-import {Client, type BaseMessageOptions, type Message} from 'discord.js'
+import {Client, DiscordAPIError, type BaseMessageOptions, type Message} from 'discord.js'
 import CronBot from '../../cronbot.ts'
 import {logFeedItemUpdates, sleep} from '../util/index.ts'
 import type {FeedItem, FeedItemUpdate, FeedItemUpdateResult, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
@@ -87,13 +87,28 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
   }
 
   // Depending on what type of update we are doing, either post a new message or edit an existing one.
-  let msg: Message
+  let msg
   if (itemUpdate.action === 'insert') {
     msg = await channel.send(payload)
   }
   else if (itemUpdate.action === 'update') {
-    msg = await channel.messages.fetch(itemUpdate.messageId)
-    await msg.edit(payload)
+    try {
+      msg = await channel.messages.fetch(itemUpdate.messageId)
+      await msg.edit(payload)
+    }
+    catch (err) {
+      if (err instanceof DiscordAPIError) {
+        // If the post does not exist, we'll handle it by posting it newly.
+        // If it's any other error, we'll rethrow the error so it gets logged.
+        if (err.code === 10008) {
+          msg = await channel.send(payload)
+        }
+        else {
+          throw err
+        }
+      }
+      throw err
+    }
   }
   else {
     throw new Error(`Item update has an invalid action type: ${(itemUpdate as FeedItemUpdate).action as string}`)
@@ -130,9 +145,14 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
     // Before posting, we'll request the task to produce the payload for this post.
     for (const postableItem of postableItems) {
       const guid = postableItem.data.guid
+      
+      // Get the message payload from the task. This can potentially be an expensive call.
       const payload = await taskInstance.getFeedItemPayload(postableItem.data)
+      // Post the message to Discord and get the posted message id.
       const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
+      // Insert the message id and other metadata into the database.
       await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
+
       await sleep(FEED_ITEM_INTERVAL)
     }
   }
