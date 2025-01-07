@@ -49,6 +49,9 @@ export class FeedTask<Config = any> {
 /**
  * Limits the number of feed update items to a given number.
  * 
+ * This actually returns twice as many items as the update limit;
+ * the additional items are used in case of errors.
+ * 
  * This is used for tasks that don't want to post too many items at once.
  * For example, if a task's getFeedItems() returns 50 items, and its limit is set to 5,
  * it will only post 5 items for now and get to the remaining 45 in subsequent calls.
@@ -60,7 +63,7 @@ function limitPostableItems(feedItemUpdates: FeedItemUpdate[], taskUpdateLimit: 
   if (taskUpdateLimit === null) {
     return feedItemUpdates
   }
-  return feedItemUpdates.slice(0, taskUpdateLimit)
+  return feedItemUpdates.slice(0, taskUpdateLimit * 2)
 }
 
 /**
@@ -141,14 +144,21 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
   try {
     // Request the full list of feed items from the task.
     const feedItems = await taskInstance.getFeedItems()
-    // Remove all items that we don't need to post, and limit it to the task's batch limit.
+    // Now we'll remove all items we don't need to post. We'll post only a number of items equal to the task's batch limit.
+    // However, we'll actually limit this to *twice* the batch limit; the additional items are normally not posted,
+    // but if any items fail we'll try to post an additional item in its stead. This prevents tasks with batchLimit=1
+    // from having a single problematic post that blocks the entire pipeline indefinitely.
     const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems), action.batchLimit || null)
     // Ask the task to report on the number of items we're about to post.
     await taskInstance.reportFeedItems(postableItems)
 
     // We've now got a number of postable items, which we will be posting one by one.
     // Before posting, we'll request the task to produce the payload for this post.
-    for (const postableItem of postableItems) {
+    for (let n = 0, posted = 0; n < postableItems.length; ++n) {
+      const postableItem = postableItems[n]
+      if (action.batchLimit != null && posted > action.batchLimit) {
+        break
+      }
       const guid = postableItem.data.guid
       
       // Get the message payload from the task. This can potentially be an expensive call.
@@ -162,6 +172,8 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
         bot.logInfo(guildId, `Task **${task.id}.${subtask}** reposted a message that appeared to have been deleted: ${getDiscordMessageLink(msg.messageId, msg.channelId, msg.guildId)}`)
       }
 
+      posted += 1
+      
       await sleep(FEED_ITEM_INTERVAL)
     }
   }
