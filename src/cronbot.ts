@@ -218,6 +218,13 @@ class CronBot {
   }
 
   /**
+   * Returns the environment paths used by the bot.
+   */
+  public getEnvPaths(): EnvPaths {
+    return this.envPaths
+  }
+
+  /**
    * Initializes the bot and starts performing tasks.
    */
   async init() {
