@@ -23,11 +23,12 @@ import CronBot from '@dada78641/cronbot'
 const callistoBot = new CronBot({
   id: 'callisto',
   name: 'Callisto',
-  options: {
-    intents: requiredBotIntents,
-  },
+  path: import.meta.dirname,
+  tasks: [
+    myTask,
+  ],
+  clientOptions: {intents: requiredBotIntents}
 })
-// Now call callistoBot.addTask() with a task, as described below.
 ```
 
 ### Application
