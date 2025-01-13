@@ -62,10 +62,10 @@ The flow for a FeedTask works like this:
 
 * We call a task instance's getFeedItems() and get a list of items that may or may not have been posted to Discord yet. Each item has a unique `guid` value.
 * The framework filters out the items that are already posted and don't need to be updated.
-* The postFeedItem() method is called for each new items that should be posted (either newly posted, or updated). It posts those items to Discord and returns its message id if the item was successfully posted.
-* The framework then saves these mappings to the database so we know they've been posted.
+* The task instance's getFeedItemPayload() method is called to get a payload for each item that needs to be posted.
+* The framework then posts those and saves them to the database so we know they've been posted.
 
-From the task creator's perspective, only getFeedItems() and postFeedItem() need to be implemented with the proper interface.
+From the task creator's perspective, only getFeedItems() and getFeedItemPayload() need to be implemented with the proper interface. Various other methods are available as well.
 
 ## External links
 
