@@ -57,6 +57,9 @@ export class FeedTask<Config = any> {
   async getFeedItemPayload(feedItem: FeedItem): Promise<BaseMessageOptions> {
     throw new Error('Unimplemented')
   }
+  cleanFeedItemCacheData(feedItem: FeedItem): FeedItem {
+    return feedItem
+  }
 }
 
 /**
@@ -157,11 +160,13 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
   try {
     // Request the full list of feed items from the task.
     const feedItems = await taskInstance.getFeedItems()
+    // Get cleaned versions of the feed items so we can check those against the cleaned versions in the database.
+    const cleanFeedItems = feedItems.map(feedItem => taskInstance.cleanFeedItemCacheData(feedItem))
     // Now we'll remove all items we don't need to post. We'll post only a number of items equal to the task's batch limit.
     // However, we'll actually limit this to *twice* the batch limit; the additional items are normally not posted,
     // but if any items fail we'll try to post an additional item in its stead. This prevents tasks with batchLimit=1
     // from having a single problematic post that blocks the entire pipeline indefinitely.
-    const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems), action.batchLimit || null)
+    const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems, cleanFeedItems), action.batchLimit || null)
     // Ask the task to report on the number of items we're about to post.
     await taskInstance.reportFeedItems(postableItems)
 
@@ -181,8 +186,10 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
         const payload = await taskInstance.getFeedItemPayload(postableItem.data)
         // Post the message to Discord and get the posted message id.
         const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
+        // Perform any data scrubbing needed before inserting into the cache.
+        const data = taskInstance.cleanFeedItemCacheData(postableItem.data)
         // Insert the message id and other metadata into the database.
-        await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
+        await orm.insertFeedItem(guid, task.id, subtask, data.data, msg.messageId, msg.guildId, msg.channelId)
 
         if (msg.isRepost) {
           bot.logInfo(guildId, `Task **${task.id}.${subtask}** reposted a message that appeared to have been deleted: ${getDiscordMessageLink(msg.messageId, msg.channelId, msg.guildId)}`)

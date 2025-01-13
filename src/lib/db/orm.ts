@@ -23,7 +23,7 @@ function createGuidMap<T extends {guid: string}>(items: T[]): Map<string, T> {
  * If the item is already found, we check the "data" value to see if it's different,
  * and if it is, it means we have an existing post on Discord that we need to edit.
  */
-export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask: string, items: FeedItem[]): Promise<FeedItemUpdate[]> {
+export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask: string, items: FeedItem[], cleanItems: FeedItem[]): Promise<FeedItemUpdate[]> {
   if (items.length === 0) {
     return []
   }
@@ -33,6 +33,7 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
 
   // Items we've received from the task.
   const itemsMap = createGuidMap(items)
+  const cleanItemsMap = createGuidMap(cleanItems)
 
   // Fetch existing entries from the database.
   const existingItems = await db.query.cache.findMany({
@@ -48,6 +49,7 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
   const existingItemsMap = createGuidMap(existingItems)
   
   for (const item of itemsMap.values()) {
+    const cleanItem = cleanItemsMap.get(item.guid)!
     const existingItem = existingItemsMap.get(item.guid)
     const existingMessageId = existingItem?.message[0]?.id || null
     
@@ -60,8 +62,9 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
       // In the rare case that we have an item, but we haven't posted it yet, treat it as a new post.
       postableItems.push({data: item, action: 'insert', messageId: null})
     }
-    else if (existingItem && !isSerializedEqual(item.data, existingItem.data) && existingMessageId !== null) {
+    else if (existingItem && !isSerializedEqual(cleanItem.data, existingItem.data) && existingMessageId !== null) {
       // If the existing item exists, but the data is different, we can update an existing Discord post.
+      // Note: we use cleaned data to check for equality, since that's what we insert into the database as well.
       postableItems.push({data: item, action: 'update', messageId: existingMessageId})
     }
     else {

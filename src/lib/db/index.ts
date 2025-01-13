@@ -92,8 +92,8 @@ export class BotDatabase {
         upsertMessage(this.client, messageId, guildId, channelId),
       connectCacheAndMessage: async (guid: string, taskId: string, messageId: string) =>
         connectCacheAndMessage(this.client, guid, taskId, messageId),
-      filterFeedItems: async (items: FeedItem[]) =>
-        filterFeedItems(this.client, task.id, subtask, items),
+      filterFeedItems: async (items: FeedItem[], cleanItems: FeedItem[]) =>
+        filterFeedItems(this.client, task.id, subtask, items, cleanItems),
       insertFeedItem: async (guid: string, taskId: string, subtask: string, data: any, messageId: string, guildId: string, channelId: string) =>
         insertFeedItem(this.client, guid, taskId, subtask, data, messageId, guildId, channelId),
     }
