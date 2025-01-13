@@ -34,7 +34,7 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
   // Items we've received from the task.
   const itemsMap = createGuidMap(items)
 
-  // Fetch existing entries from the database
+  // Fetch existing entries from the database.
   const existingItems = await db.query.cache.findMany({
     with: {
       message: true
@@ -51,7 +51,11 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
     const existingItem = existingItemsMap.get(item.guid)
     const existingMessageId = existingItem?.message[0]?.id || null
     
-    if (existingItem === undefined || (existingItem && existingMessageId === null)) {
+    if (existingItem && existingItem.status === 'errored') {
+      // If the item exists but its status is set to "errored", we'll skip it.
+      continue
+    }
+    else if (existingItem === undefined || (existingItem && existingMessageId === null)) {
       // If we have no existing item yet, we can send a new post to Discord.
       // In the rare case that we have an item, but we haven't posted it yet, treat it as a new post.
       postableItems.push({data: item, action: 'insert', messageId: null})
@@ -68,6 +72,35 @@ export async function filterFeedItems(db: DrizzleClient, taskId: string, subtask
   }
   
   return postableItems
+}
+
+/**
+ * Marks an item with a given status.
+ * 
+ * This is used to set an item to "errored", which causes it to be skipped next time.
+ */
+export async function markFeedItemStatus(db: DrizzleClient, status: string, guid: string, taskId: string, subtask: string): Promise<void> {
+  const values = {
+    guid,
+    task: taskId,
+    subtask,
+    status,
+    data: null,
+  }
+  await db
+    .insert(cache)
+    .values({
+      ...values,
+      createdAt: new Date()
+    })
+    .onConflictDoUpdate({
+      target: [cache.guid, cache.task],
+      set: {
+        ...omit(values, ['guid', 'data']),
+        updatedAt: new Date()
+      }
+    })
+    .returning()
 }
 
 /**

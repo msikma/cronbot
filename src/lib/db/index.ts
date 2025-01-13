@@ -7,7 +7,7 @@ import type {EnvPaths} from '@dada78641/env-paths'
 import {migrate} from 'drizzle-orm/better-sqlite3/migrator'
 import {drizzle, type BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
 import CronBot from '../../cronbot.ts'
-import {upsertCache, upsertMessage, connectCacheAndMessage, filterFeedItems, insertFeedItem} from './orm.ts'
+import {upsertCache, upsertMessage, connectCacheAndMessage, filterFeedItems, markFeedItemStatus, insertFeedItem} from './orm.ts'
 import * as schema from './schema.ts'
 import type {BotTask, FeedItem, TaskActionDatabaseFunctions} from '../../types.ts'
 import {ensureDirectory} from '../util/index.ts'
@@ -84,6 +84,8 @@ export class BotDatabase {
    */
   public getTaskActionDatabaseOrm(task: BotTask, subtask: string): TaskActionDatabaseFunctions {
     return {
+      markFeedItemStatus: async (status: string, guid: string, taskId: string, subtask: string) =>
+        markFeedItemStatus(this.client, status, guid, taskId, subtask),
       upsertCache: async (guid: string, taskId: string, subtask: string, data: any) =>
         upsertCache(this.client, guid, taskId, subtask, data),
       upsertMessage: async (messageId: string, guildId: string, channelId: string) =>

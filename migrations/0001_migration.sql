@@ -1,0 +1,1 @@
+ALTER TABLE `cache` ADD `status` text;

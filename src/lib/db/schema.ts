@@ -16,6 +16,8 @@ export const cache = sqliteTable('cache', {
   subtask: text('subtask'),
   // The data is raw json in any format.
   data: text('data', {mode: 'json'}).notNull(),
+  // The status of this item (normally null, but can be "error").
+  status: text('status'),
   // Timestamps.
   createdAt: integer('created_at', {mode: 'timestamp_ms'}).notNull(),
   updatedAt: integer('updated_at', {mode: 'timestamp_ms'}),

@@ -10,6 +10,19 @@ import type {FeedItem, FeedItemUpdate, BotTask, BotTaskAction, TaskActionContext
 const FEED_ITEM_INTERVAL = 5000
 
 /**
+ * Error that should be thrown if a particular payload should not be posted.
+ * 
+ * This causes a post to be marked as not being postable so it won't be retried.
+ */
+export class ShouldNotPostError extends Error {
+  constructor(message?: string) {
+    super(message)
+    this.name = 'CannotPostError'
+    Object.setPrototypeOf(this, ShouldNotPostError.prototype)
+  }
+}
+
+/**
  * FeedTask type task that posts entries to Discord periodically.
  * 
  * The flow for a FeedTask works like this:
@@ -161,18 +174,32 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
       }
       const guid = postableItem.data.guid
       
-      // Get the message payload from the task. This can potentially be an expensive call.
-      const payload = await taskInstance.getFeedItemPayload(postableItem.data)
-      // Post the message to Discord and get the posted message id.
-      const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
-      // Insert the message id and other metadata into the database.
-      await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
+      // Now we'll attempt to get the item's payload, and post it to Discord.
+      // Payload generation can sometimes be expensive, and it can fail. Normally, we'll just log the error and try again later.
+      try {
+        // Get the message payload from the task. This can potentially be an expensive call.
+        const payload = await taskInstance.getFeedItemPayload(postableItem.data)
+        // Post the message to Discord and get the posted message id.
+        const msg = await postFeedItemPayload(taskInstance, payload, postableItem, task, subtask)
+        // Insert the message id and other metadata into the database.
+        await orm.insertFeedItem(guid, task.id, subtask, postableItem.data.data, msg.messageId, msg.guildId, msg.channelId)
 
-      if (msg.isRepost) {
-        bot.logInfo(guildId, `Task **${task.id}.${subtask}** reposted a message that appeared to have been deleted: ${getDiscordMessageLink(msg.messageId, msg.channelId, msg.guildId)}`)
+        if (msg.isRepost) {
+          bot.logInfo(guildId, `Task **${task.id}.${subtask}** reposted a message that appeared to have been deleted: ${getDiscordMessageLink(msg.messageId, msg.channelId, msg.guildId)}`)
+        }
+
+        posted += 1
       }
-
-      posted += 1
+      catch (err) {
+        if (err instanceof ShouldNotPostError) {
+          // If the task threw a ShouldNotPostError, it means this item should have its guid marked as being not postable.
+          // This will cause it to not be re-attempted at a later time, as it will be filtered out by filterFeedItems().
+          await orm.markFeedItemStatus('errored', guid, task.id, subtask)
+        }
+        else {
+          bot.logError(guildId, `Task **${task.id}.${subtask}** failed to post an item:`, {guid: postableItem.data.guid, guildId}, err as Error)
+        }
+      }
       
       await sleep(FEED_ITEM_INTERVAL)
     }
