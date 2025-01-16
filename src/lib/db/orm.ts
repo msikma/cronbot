@@ -88,7 +88,7 @@ export async function markFeedItemStatus(db: DrizzleClient, status: string, guid
     task: taskId,
     subtask,
     status,
-    data: null,
+    data: {},
   }
   await db
     .insert(cache)
