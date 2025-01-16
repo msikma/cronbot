@@ -10,15 +10,15 @@ import type {FeedItem, FeedItemUpdate, BotTask, BotTaskAction, TaskActionContext
 const FEED_ITEM_INTERVAL = 5000
 
 /**
- * Error that should be thrown if a particular payload should not be posted.
+ * Error indicating that a feed item's payload generation is expected to permanently fail.
  * 
- * This causes a post to be marked as not being postable so it won't be retried.
+ * This should be thrown in case e.g. an item is no longer available on the internet.
  */
-export class ShouldNotPostError extends Error {
+export class PermanentFailureError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = 'CannotPostError'
-    Object.setPrototypeOf(this, ShouldNotPostError.prototype)
+    this.name = 'PermanentFailureError'
+    Object.setPrototypeOf(this, PermanentFailureError.prototype)
   }
 }
 
@@ -198,8 +198,8 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
         posted += 1
       }
       catch (err) {
-        if (err instanceof ShouldNotPostError) {
-          // If the task threw a ShouldNotPostError, it means this item should have its guid marked as being not postable.
+        if (err instanceof PermanentFailureError) {
+          // If the task threw a PermanentFailureError, it means this item should have its guid marked as being not postable.
           // This will cause it to not be re-attempted at a later time, as it will be filtered out by filterFeedItems().
           await orm.markFeedItemStatus('errored', guid, task.id, subtask)
         }
