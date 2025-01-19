@@ -17,6 +17,8 @@ export interface ScheduledTaskData {
   isCanceled: boolean
   // Generator function that calls the task at its configured interval.
   action: AsyncGenerator<void> | null
+  // Index number of the action we'll call for this task.
+  actionN: number
   // Function that loops forever and calls the generator until the task is canceled.
   loop: Promise<void> | null
 }

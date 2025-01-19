@@ -43,14 +43,24 @@ export class BotTaskScheduler {
     }
 
     // Create the scheduled task object.
-    this.tasks.set(task.id, this.createScheduledTask(task))
+    for (const [name, n] of this.unpackTaskActions(task)) {
+      const taskId = `${task.id}$${name}`
+      this.tasks.set(taskId, this.createScheduledTask(task, n))
 
-    // Normally, the scheduler does not start until the bot is connected.
-    // If the scheduler is already running, start this new task immediately.
-    // Otherwise, we'll leave it be until the scheduler is started.
-    if (this.isStarted) {
-      this.startTask(task.id)
+      // Normally, the scheduler does not start until the bot is connected.
+      // If the scheduler is already running, start this new task immediately.
+      // Otherwise, we'll leave it be until the scheduler is started.
+      if (this.isStarted) {
+        this.startTask(taskId)
+      }
     }
+  }
+
+  /**
+   * Returns the bot's actions and their function names.
+   */
+  private unpackTaskActions(task: BotTask): [string, number][] {
+    return (task.actions || []).map((action, n) => [action.action.name, n])
   }
 
   /**
@@ -58,7 +68,7 @@ export class BotTaskScheduler {
    * 
    * This sets the task up to begin execution the scheduler starts.
    */
-  private createScheduledTask(task: BotTask): ScheduledTaskData {
+  private createScheduledTask(task: BotTask, actionN: number): ScheduledTaskData {
     return {
       id: task.id,
       task,
@@ -68,6 +78,7 @@ export class BotTaskScheduler {
       // We'll create the action and loop function once the scheduler starts,
       // as we don't have the config loaded at this point yet.
       action: null,
+      actionN,
       loop: null,
     }
   }
@@ -87,9 +98,8 @@ export class BotTaskScheduler {
    * This generator loops forever and yields calls to the task's function
    * with the appropriate execution context.
    */
-  private async *createTaskAction(task: BotTask): AsyncGenerator<void> {
-    // TODO: use all actions
-    const action = task.actions?.[0]
+  private async *createTaskAction(task: BotTask, actionN: number): AsyncGenerator<void> {
+    const action = task.actions?.[actionN]
 
     if (action === undefined) {
       throw new Error(`No action defined for task: ${task.id}`)
@@ -216,6 +226,20 @@ export class BotTaskScheduler {
   }
 
   /**
+   * Returns all tasks associated by an id.
+   */
+  private getTasksById(id: string): string[] {
+    const tasks = []
+    for (const taskIdString of this.tasks.keys()) {
+      const [taskId, taskActionName] = taskIdString.split('$')
+      if (taskId === id) {
+        tasks.push(taskIdString)
+      }
+    }
+    return tasks
+  }
+
+  /**
    * Starts a single task.
    * 
    * This creates a looping function that forever calls the scheduled task's
@@ -230,8 +254,21 @@ export class BotTaskScheduler {
       throw new Error(`Tried to start the same task twice: ${id}`)
     }
     task.isStarted = true
-    task.action = this.createTaskAction(task.task)
+    task.action = this.createTaskAction(task.task, task.actionN)
     task.loop = this.loopTaskAction(task)
+  }
+
+  /**
+   * Starts all actions for a given task.
+   */
+  private startAllTaskActions(id: string) {
+    const tasksForId = this.getTasksById(id)
+    if (tasksForId.length === 0) {
+      throw new Error(`Tried to start an invalid task: ${id}`)
+    }
+    for (const taskId of tasksForId) {
+      this.startTask(taskId)
+    }
   }
 
   /**
