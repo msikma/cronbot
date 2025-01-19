@@ -36,7 +36,7 @@ const callistoBot = new CronBot({
 You'll need to set up a **bot application** on the [Discord Developer Portal](https://discord.com/developers/).
 
 1. Create a new application. Copy the **client id** (or **application id**) for use in the installation link in a moment.
-2. Go to the Bot section and click **Reset Token**. Copy the **token** over to the [config file](/resources/config-example.js).
+2. Go to the Bot section and click **Reset Token**. Copy the **token** over to the [config file](/resources/config-example.js). Check **Server Members Intent** and **Message Content Intent**.
 3. Go to Installation and uncheck **User Install**. Set the **Install Link** to **None**.
 4. Invite your bot to a server using the following link (copy in your own client id from before):
 
