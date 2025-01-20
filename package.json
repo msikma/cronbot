@@ -57,7 +57,7 @@
     "@dada78641/env-paths": "^0.1.0",
     "@dada78641/repo-version": "^0.1.2",
     "better-sqlite3": "^11.7.0",
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.17.3",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "format-duration": "^3.0.2",
