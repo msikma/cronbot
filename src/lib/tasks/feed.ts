@@ -4,7 +4,7 @@
 import {Client, DiscordAPIError, type BaseMessageOptions, type Message} from 'discord.js'
 import CronBot from '../../cronbot.ts'
 import {logFeedItemUpdates, getDiscordMessageLink, sleep} from '../util/index.ts'
-import type {FeedItem, FeedItemUpdate, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
+import type {FeedItem, FeedItemUpdate, FeedItemUpdateMeta, FeedItemUpdateMetaItem, BotTask, BotTaskAction, TaskActionContext} from '../../types.ts'
 
 // Amount of time we sleep while posting multiple feed items.
 const FEED_ITEM_INTERVAL = 5000
@@ -50,6 +50,9 @@ export class FeedTask<Config = any> {
   async reportFeedItems(feedItemUpdates: FeedItemUpdate[]): Promise<void> {
     // If there are items to post, we'll post "posting x new items" to the log.
     await this.context.log.info(logFeedItemUpdates(feedItemUpdates))
+  }
+  async getFeedItemMeta(feedItem: FeedItem): Promise<FeedItemUpdateMeta> {
+    return {shouldUpdate: null}
   }
   async getFeedItems(): Promise<FeedItem[]> {
     throw new Error('Unimplemented')
@@ -151,6 +154,23 @@ async function postFeedItemPayload(taskInstance: FeedTask, payload: BaseMessageO
 }
 
 /**
+ * Retrieves update meta items for a given task's newly obtained feed items.
+ * 
+ * These are tags that can tell us if we need to forcibly update an item even if already posted,
+ * for example, when we know ahead of time that the payload will be different this time even
+ * if the original feed data is the same.
+ */
+async function getFeedItemUpdateMeta(taskInstance: FeedTask, feedItems: FeedItem[]) {
+  return Promise.all(feedItems.map(async feedItem => {
+    const updateMeta = await taskInstance.getFeedItemMeta(feedItem)
+    return {
+      guid: feedItem.guid,
+      data: updateMeta
+    }
+  }))
+}
+
+/**
  * Runs a FeedTask type task.
  * 
  * This function is called from the scheduler. It implements the flow described above.
@@ -162,11 +182,13 @@ export async function runFeedTask(taskInstance: FeedTask, task: BotTask, subtask
     const feedItems = await taskInstance.getFeedItems()
     // Get cleaned versions of the feed items so we can check those against the cleaned versions in the database.
     const cleanFeedItems = feedItems.map(feedItem => taskInstance.cleanFeedItemCacheData(feedItem))
+    // Get update meta (tags imploring us to forcibly update items even if already posted).
+    const feedItemsUpdateMeta = await getFeedItemUpdateMeta(taskInstance, feedItems)
     // Now we'll remove all items we don't need to post. We'll post only a number of items equal to the task's batch limit.
     // However, we'll actually limit this to *twice* the batch limit; the additional items are normally not posted,
     // but if any items fail we'll try to post an additional item in its stead. This prevents tasks with batchLimit=1
     // from having a single problematic post that blocks the entire pipeline indefinitely.
-    const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems, cleanFeedItems), action.batchLimit || null)
+    const postableItems = limitPostableItems(await orm.filterFeedItems(feedItems, cleanFeedItems, feedItemsUpdateMeta), action.batchLimit || null)
     // Ask the task to report on the number of items we're about to post.
     await taskInstance.reportFeedItems(postableItems)
 

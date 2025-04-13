@@ -23,6 +23,19 @@ export type FeedItemUpdate<T = any, U extends TaskConfigBase = TaskConfigBase> =
     {action: 'update', messageId: string}
   )
 
+// Optional update metadata for feed items. This allows us to forcibly run an update for a feed item
+// even if it hasn't changed (for when you know the payload will be different even with the same data).
+// If an item is null or undefined, the determination is not altered from the default logic.
+export type FeedItemUpdateMeta = {
+  shouldUpdate?: boolean | null
+}
+
+// Wrapped version of FeedItemUpdateMeta with the item's guid.
+export type FeedItemUpdateMetaItem = {
+  guid: string
+  data: FeedItemUpdateMeta
+}
+
 // After posting feed items to Discord, we receive back the post's message, guild and channel ids.
 // This allows the bot to update the database so we know which items have been successfully posted.
 export type FeedItemUpdateResult = {

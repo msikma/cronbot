@@ -7,12 +7,12 @@ import {BotDatabase} from '../lib/db/index.ts'
 import type {BotTask, BotTaskAction} from './task.ts'
 import type {BotTaskActionConfig} from './config.ts'
 import type {LogFunction} from './logger.ts'
-import type {FeedItem, FeedItemUpdate} from './task-type.ts'
+import type {FeedItem, FeedItemUpdate, FeedItemUpdateMetaItem} from './task-type.ts'
 
 // List of ORM functions provided to a task action.
 export type TaskActionDatabaseFunctions = {
   markFeedItemStatus: (status: string, guid: string, taskId: string, subtask: string) => Promise<void>
-  filterFeedItems: (items: FeedItem[], cleanItems: FeedItem[]) => Promise<FeedItemUpdate[]>
+  filterFeedItems: (items: FeedItem[], cleanItems: FeedItem[], itemsUpdateMeta: FeedItemUpdateMetaItem[]) => Promise<FeedItemUpdate[]>
   insertFeedItem: (guid: string, taskId: string, subtask: string, data: any, messageId: string, guildId: string, channelId: string) => Promise<void>
   upsertCache: (guid: string, taskId: string, subtask: string, data: any) => Promise<void>
   upsertMessage: (messageId: string, guildId: string, channelId: string) => Promise<void>

@@ -9,7 +9,7 @@ import {drizzle, type BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
 import CronBot from '../../cronbot.ts'
 import {upsertCache, upsertMessage, connectCacheAndMessage, filterFeedItems, markFeedItemStatus, insertFeedItem} from './orm.ts'
 import * as schema from './schema.ts'
-import type {BotTask, FeedItem, TaskActionDatabaseFunctions} from '../../types.ts'
+import type {BotTask, FeedItem, FeedItemUpdateMetaItem, TaskActionDatabaseFunctions} from '../../types.ts'
 import {ensureDirectory} from '../util/index.ts'
 
 // Type of the Drizzle client.
@@ -92,8 +92,8 @@ export class BotDatabase {
         upsertMessage(this.client, messageId, guildId, channelId),
       connectCacheAndMessage: async (guid: string, taskId: string, messageId: string) =>
         connectCacheAndMessage(this.client, guid, taskId, messageId),
-      filterFeedItems: async (items: FeedItem[], cleanItems: FeedItem[]) =>
-        filterFeedItems(this.client, task.id, subtask, items, cleanItems),
+      filterFeedItems: async (items: FeedItem[], cleanItems: FeedItem[], itemsUpdateMeta: FeedItemUpdateMetaItem[]) =>
+        filterFeedItems(this.client, task.id, subtask, items, cleanItems, itemsUpdateMeta),
       insertFeedItem: async (guid: string, taskId: string, subtask: string, data: any, messageId: string, guildId: string, channelId: string) =>
         insertFeedItem(this.client, guid, taskId, subtask, data, messageId, guildId, channelId),
     }
