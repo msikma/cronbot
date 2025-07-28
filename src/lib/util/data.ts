@@ -13,17 +13,16 @@ export function omitUndefined(obj: object): object {
 /**
  * Runs promises sequentially.
  * 
- * Call like Promise.all().
+ * Call similar to Promise.all(); takes an array of thunks instead of an array of Promises.
  */
-export function promiseSequential<T>(promises: Promise<T>[]): Promise<T[]> {
-  return promises.reduce(
-    async (chain, current) => {
-      const results = await chain
-      const result = await current
-      return [...results, result]
-    },
-    Promise.resolve([] as T[])
-  )
+export async function promiseSequential<T>(promises: (() => Promise<T>)[]): Promise<T[]> {
+  const results: T[] = [];
+
+  for (const task of promises) {
+    results.push(await task());
+  }
+
+  return results;
 }
 
 /**
