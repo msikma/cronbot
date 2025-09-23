@@ -3,6 +3,7 @@
 
 import {Client} from 'discord.js'
 import {EmbedBuilder} from 'discord.js'
+import CronBot from '../cronbot.ts'
 import {BotDatabase} from '../lib/db/index.ts'
 import type {BotTask, BotTaskAction} from './task.ts'
 import type {BotTaskActionConfig} from './config.ts'
@@ -42,6 +43,8 @@ export interface TaskActionContext {
   guildId: string
   // Reference to the Discord.js client.
   client: Client
+  // Reference to the CronBot instance.
+  bot: CronBot
   // Direct reference to the bot database instance.
   db: BotDatabase
   // Database ORM functions provided to the task action.

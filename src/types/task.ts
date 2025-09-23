@@ -28,7 +28,7 @@ export type BotTaskDesign = {
 // The actual function called for a task.
 export type BotTaskAction<Config = any> = {
   // Class that gets instantiated and called.
-  action: new (context: TaskActionContext & { config: Config }) => FeedTask<Config>
+  action: new (context: TaskActionContext & {config: Config}) => FeedTask<Config>
   // Simple one-line description of this function does.
   description: string
   // Interval at which this function is called.

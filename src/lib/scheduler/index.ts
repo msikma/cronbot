@@ -190,6 +190,7 @@ export class BotTaskScheduler {
       config: actionConfig,
       guildId,
       client: bot.getClient(),
+      bot: bot,
       db: this.bot.db,
       orm,
       log: {
