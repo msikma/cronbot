@@ -11,6 +11,13 @@ export function omitUndefined(obj: object): object {
 }
 
 /**
+ * Wraps an item in an array if it isn't already one.
+ */
+export function arrayWrap<T = any>(item: T | T[]): T[] {
+  return Array.isArray(item) ? item : [item]
+}
+
+/**
  * Runs promises sequentially.
  * 
  * Call similar to Promise.all(); takes an array of thunks instead of an array of Promises.

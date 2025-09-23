@@ -1,4 +1,4 @@
-// cpl-apollo <https://github.com/msikma/cpl-apollo>
+// @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
 import {default as _formatDuration} from 'format-duration'
