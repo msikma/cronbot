@@ -37,6 +37,7 @@ export class PermanentFailureError extends Error {
  * From the task creator's perspective, getFeedItems() and postFeedItem() need to be implemented.
  */
 export class FeedTask<Config = any> {
+  public static readonly __taskType = 'FeedTask'
   public context: TaskActionContext & {config: Config}
   public client: Client
   public task: BotTask
@@ -63,6 +64,16 @@ export class FeedTask<Config = any> {
   cleanFeedItemCacheData(feedItem: FeedItem): FeedItem {
     return feedItem
   }
+}
+
+/**
+ * Checks if a given object is a FeedTask.
+ */
+export function isFeedTask(task: unknown): task is FeedTask {
+  return (
+    task != null &&
+    (task as any)?.constructor?.__taskType === 'FeedTask'
+  )
 }
 
 /**

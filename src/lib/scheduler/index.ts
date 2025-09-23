@@ -3,7 +3,7 @@
 
 import {sleep, createTaskEmbed} from '../util/index.ts'
 import CronBot from '../../cronbot.ts'
-import {runFeedTask, FeedTask} from '../../index.ts'
+import {runFeedTask, isFeedTask} from '../../index.ts'
 import type {BotTask, BotTaskAction, BotTaskActionConfig, TaskActionContext, ScheduledTaskData} from '../../types.ts'
 
 const PAUSE_WAIT = 500
@@ -131,7 +131,7 @@ export class BotTaskScheduler {
     while (true) {
       for (const guildId of config.guilds.keys()) {
         const instance = instances.get(guildId)!
-        if (instance instanceof FeedTask) {
+        if (isFeedTask(instance)) {
           const subtask = action.action.name
           await runFeedTask(instance, task, subtask, action, guildId, this.bot)
         }
