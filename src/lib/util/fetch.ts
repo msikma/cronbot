@@ -38,16 +38,19 @@ export async function fetchBrowser(input: string | URL | globalThis.Request | UR
  */
 export async function fetchPuppeteer(url: string | URL, waitSelector?: string): Promise<string> {
   const browser = await puppeteer.launch()
-  const page = await browser.newPage()
+  try {
+    const page = await browser.newPage()
 
-  await page.goto(String(url), {waitUntil: 'domcontentloaded'})
+    await page.goto(String(url), {waitUntil: 'domcontentloaded'})
 
-  if (waitSelector) {
-    await page.waitForSelector(waitSelector)
+    if (waitSelector) {
+      await page.waitForSelector(waitSelector)
+    }
+
+    const html = await page.content()
+    return html
   }
-
-  const html = await page.content()
-  await browser.close()
-
-  return html
+  finally {
+    await browser.close()
+  }
 }
