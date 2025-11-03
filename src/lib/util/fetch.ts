@@ -34,10 +34,22 @@ export async function fetchBrowser(input: string | URL | globalThis.Request | UR
 }
 
 /**
+ * Returns options to pass to Puppeteer.
+ */
+function getPuppeteerOptions(disableSecurity?: boolean): puppeteer.LaunchOptions {
+  const opts: puppeteer.LaunchOptions = {}
+  if (disableSecurity) {
+    opts['args'] = ['--no-sandbox', '--disable-setuid-sandbox']
+  }
+  return opts
+}
+
+/**
  * Fetches a page using Puppeteer.
  */
-export async function fetchPuppeteer(url: string | URL, waitSelector?: string): Promise<string> {
-  const browser = await puppeteer.launch()
+export async function fetchPuppeteer(url: string | URL, waitSelector?: string, disableSecurity?: boolean): Promise<string> {
+  const opts = getPuppeteerOptions(disableSecurity)
+  const browser = await puppeteer.launch(opts)
   try {
     const page = await browser.newPage()
 
