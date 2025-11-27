@@ -115,14 +115,14 @@ export async function markFeedItemStatus(db: DrizzleClient, status: string, guid
 /**
  * Upserts a cache item.
  */
-export async function upsertCache(db: DrizzleClient, guid: string, taskId: string, subtask: string, data: any): Promise<void> {
+export function upsertCache(db: DrizzleClient, guid: string, taskId: string, subtask: string, data: any): void {
   const values = {
     guid,
     task: taskId,
     subtask,
     data,
   }
-  await db
+  db
     .insert(cache)
     .values({
       ...values,
@@ -141,13 +141,13 @@ export async function upsertCache(db: DrizzleClient, guid: string, taskId: strin
 /**
  * Upserts a Discord message.
  */
-export async function upsertMessage(db: DrizzleClient, messageId: string, guildId: string, channelId: string): Promise<void> {
+export function upsertMessage(db: DrizzleClient, messageId: string, guildId: string, channelId: string): void {
   const values = {
     id: messageId,
     guildId,
     channelId,
   }
-  await db
+  db
     .insert(message)
     .values({
       ...values,
@@ -166,14 +166,14 @@ export async function upsertMessage(db: DrizzleClient, messageId: string, guildI
 /**
  * Connects a cache item and a Discord message in the database.
  */
-export async function connectCacheAndMessage(db: DrizzleClient, guid: string, taskId: string, messageId: string): Promise<void> {
-  await db
+export function connectCacheAndMessage(db: DrizzleClient, guid: string, taskId: string, messageId: string): void {
+  db
     .delete(cacheToMessage)
     .where(and(
       eq(cacheToMessage.guid, guid),
       ne(cacheToMessage.id, messageId)
     ))
-  await db
+  db
     .insert(cacheToMessage)
     .values({
       guid: guid,
@@ -190,10 +190,10 @@ export async function connectCacheAndMessage(db: DrizzleClient, guid: string, ta
  * 
  * This combines upsertCache(), upsertMessage() and connectCacheAndMessage() in one transaction.
  */
-export async function insertFeedItem(db: DrizzleClient, guid: string, taskId: string, subtask: string, data: any, messageId: string, guildId: string, channelId: string): Promise<void> {
-  await db.transaction(async tx => {
-    await upsertCache(tx, guid, taskId, subtask, data)
-    await upsertMessage(tx, messageId, guildId, channelId)
-    await connectCacheAndMessage(tx, guid, taskId, messageId)
+export function insertFeedItem(db: DrizzleClient, guid: string, taskId: string, subtask: string, data: any, messageId: string, guildId: string, channelId: string): void {
+  db.transaction(tx => {
+    upsertCache(tx, guid, taskId, subtask, data)
+    upsertMessage(tx, messageId, guildId, channelId)
+    connectCacheAndMessage(tx, guid, taskId, messageId)
   })
 }
