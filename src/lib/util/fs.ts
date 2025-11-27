@@ -12,3 +12,16 @@ export function ensureDirectory(filepath: string): void {
   }
   fs.mkdirSync(filepath, {recursive: true})
 }
+
+/**
+ * Checks whether a file exists.
+ */
+export async function checkFileExists(filepath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(filepath, fs.constants.F_OK)
+    return true
+  }
+  catch {
+    return false
+  }
+}

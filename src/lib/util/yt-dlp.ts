@@ -1,6 +1,9 @@
 // @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
+import * as os from 'node:os'
+import * as path from 'node:path'
+import {checkFileExists} from './fs.ts'
 import {runCommand, canRunCommand} from './exec.ts'
 
 export type Captions = {
@@ -199,13 +202,24 @@ export interface YoutubeVideo {
 }
 
 /**
+ * Returns a yt-dlp command, including the cookies file if it exists.
+ */
+async function getYtDlpCommand(ytDlpPath: string = 'yt-dlp', args: string[]): Promise<string[]> {
+  const cookieFile = path.join(os.homedir(), '.cache', 'cronbot')
+  if (await checkFileExists(cookieFile)) {
+    return [ytDlpPath, '--cookies', `${cookieFile}`, ...args]
+  }
+  return [ytDlpPath, ...args]
+}
+
+/**
  * Runs yt-dlp on a given video id and returns its data.
  */
 export async function getYtDlpVideoData(id: string, ytDlpPath: string = 'yt-dlp'): Promise<YtDlpVideoResult> {
   if (!canRunCommand(ytDlpPath)) {
     throw new Error(`could not find yt-dlp at given path: ${ytDlpPath}`)
   }
-  const res = await runCommand([ytDlpPath, '--dump-single-json', `https://www.youtube.com/watch?v=${id}`])
+  const res = await runCommand(await getYtDlpCommand(ytDlpPath, ['--dump-single-json', `https://www.youtube.com/watch?v=${id}`]))
   if (res.exitCode !== 0) {
     throw new Error(`yt-dlp returned error code: ${res.exitCode} (id=${id})`)
   }
@@ -228,7 +242,7 @@ export async function getYtDlpChannelData(channelId: string, ytDlpPath: string =
     throw new Error(`could not find yt-dlp at given path: ${ytDlpPath}`)
   }
   const url = channelId.startsWith('@') ? `https://www.youtube.com/${channelId}` : `https://www.youtube.com/channel/${channelId}`
-  const res = await runCommand([ytDlpPath, '-J', '-I', '0:0', url])
+  const res = await runCommand(await getYtDlpCommand(ytDlpPath, ['-J', '-I', '0:0', url]))
   if (res.exitCode !== 0) {
     throw new Error(`yt-dlp returned error code: ${res.exitCode} (channelId=${channelId})`)
   }
