@@ -205,7 +205,7 @@ export interface YoutubeVideo {
  * Returns a yt-dlp command, including the cookies file if it exists.
  */
 async function getYtDlpCommand(ytDlpPath: string = 'yt-dlp', args: string[]): Promise<string[]> {
-  const cookieFile = path.join(os.homedir(), '.cache', 'cronbot')
+  const cookieFile = path.join(os.homedir(), '.cache', 'cronbot', 'cookies.txt')
   if (await checkFileExists(cookieFile)) {
     return [ytDlpPath, '--cookies', `${cookieFile}`, ...args]
   }
