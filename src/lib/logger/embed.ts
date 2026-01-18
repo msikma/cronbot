@@ -1,8 +1,10 @@
 // @dada78641/cronbot <https://github.com/msikma/cronbot>
 // © MIT license
 
+import {isPlainObject} from 'lodash-es'
 import {EmbedBuilder} from 'discord.js'
 import type {APIEmbedField} from 'discord.js'
+import {responseObject} from '../util/data.ts'
 import {wrapErrorStackEscapeCodes, createMessageContentEmbed, processErrorStack, wrapInMonospace, wrapJsonBlock} from '../util/embed.ts'
 import type {LogContent} from '../../types.ts'
 
@@ -47,6 +49,7 @@ export function createErrorEmbed(
     const message = 'message' in error ? error.message : null
     const code = 'code' in error ? error.code : null
     const stack = 'stack' in error ? error.stack : null
+    const cause = 'cause' in error ? error.cause : null
 
     const fields: APIEmbedField[] = []
     if (data) {
@@ -60,6 +63,17 @@ export function createErrorEmbed(
     }
     if (message) {
       fields.push({name: 'Message', value: `${message}`, inline: false})
+    }
+    if (cause) {
+      if (isPlainObject(cause)) {
+        fields.push({name: 'Cause', value: wrapJsonBlock(cause, true)})
+      }
+      else if (cause instanceof Response) {
+        fields.push({name: 'Cause', value: wrapJsonBlock(responseObject(cause), true)})
+      }
+      else {
+        fields.push({name: 'Cause', value: `${cause}`})
+      }
     }
 
     const embed = new EmbedBuilder()

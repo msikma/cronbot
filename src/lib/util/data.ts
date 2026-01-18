@@ -2,6 +2,7 @@
 // © MIT license
 
 import {omitBy, isUndefined} from 'lodash-es'
+import type {PlainValue} from '../../types.ts'
 
 /**
  * Removes undefined values from an object.
@@ -15,6 +16,23 @@ export function omitUndefined(obj: object): object {
  */
 export function arrayWrap<T = any>(item: T | T[]): T[] {
   return Array.isArray(item) ? item : [item]
+}
+
+/**
+ * Converts a fetch response object into a plain object.
+ * 
+ * Omits things we can't serialize.
+ */
+export function responseObject(res: Response) {
+  const obj: {[key: string]: PlainValue} = {}
+  obj.url = res.url
+  obj.redirected = res.redirected
+  obj.status = res.status
+  obj.ok = res.ok
+  obj.headers = Object.fromEntries(res.headers.entries())
+  obj.bodyUsed = res.bodyUsed
+  obj.type = res.type
+  return obj
 }
 
 /**
