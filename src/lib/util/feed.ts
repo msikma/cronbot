@@ -42,6 +42,9 @@ export function parseFeed(xml: string, options = {}): Promise<Item[]> {
 export async function fetchFeed(url: string, options = {}) {
   const res = await fetchBrowser(url)
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error('Feed does not exist', {cause: res})
+    }
     throw new Error('Could not fetch feed xml', {cause: res})
   }
   const xml = await res.text()
