@@ -6,10 +6,15 @@ import FeedParser from 'feedparser'
 import type {Item} from 'feedparser'
 import {fetchBrowser} from './fetch.ts'
 
+export interface FetchFeedOptions {
+  feedparserOptions?: object
+  silentlyFail?: boolean
+}
+
 /**
  * Parses an Atom/rss feed and returns its items.
  */
-export function parseFeed(xml: string, options = {}): Promise<Item[]> {
+export function parseFeed(xml: string, options: object = {}): Promise<Item[]> {
   return new Promise((resolve, reject) => {
     const contentStream = new PassThrough()
     contentStream.write(xml)
@@ -39,7 +44,7 @@ export function parseFeed(xml: string, options = {}): Promise<Item[]> {
 /**
  * Fetches a feed by url and parses it.
  */
-export async function fetchFeed(url: string, options = {}) {
+export async function fetchFeed(url: string, options: FetchFeedOptions = {}) {
   const res = await fetchBrowser(url)
   if (!res.ok) {
     if (res.status === 404) {
@@ -48,6 +53,19 @@ export async function fetchFeed(url: string, options = {}) {
     throw new Error('Could not fetch feed xml', {cause: res})
   }
   const xml = await res.text()
-  const items = await parseFeed(xml, options)
-  return items
+  try {
+    const items = await parseFeed(xml, options.feedparserOptions ?? {})
+    return items
+  }
+  catch (err) {
+    if (!(err instanceof Error)) {
+      throw err
+    }
+    if (err.message === 'Feed does not exist' && options.silentlyFail) {
+      // This occasionally happens with Youtube feeds. Probably a rate limit.
+      // In this case we just silently fail.
+      return []
+    }
+    throw err
+  }
 }
